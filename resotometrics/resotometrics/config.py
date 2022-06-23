@@ -23,6 +23,10 @@ class Metric:
     search: str = field(metadata={"description": "Aggregation search to run"})
     type: MetricType = field(default=MetricType.gauge, metadata={"description": "Type of metric (gauge or counter)"})
 
+    def __post_init__(self):
+        if isinstance(self.type, str):
+            self.type = MetricType(self.type)
+
 
 def _load_default_metrics() -> Dict[str, Metric]:
     default_metrics = {}
