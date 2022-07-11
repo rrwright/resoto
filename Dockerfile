@@ -44,7 +44,8 @@ RUN apt-get -y install \
         libffi-dev \
         libssl-dev \
         cargo \
-        linux-headers-generic
+        linux-headers-generic \
+        git 
 
 # Download and install ArangoDB (graphdb)
 WORKDIR /usr/local/db
