@@ -40,6 +40,9 @@ class AwsClient:
         self.role = role
         self.profile = profile
         self.region = region
+        self.AWS_ACCESS_KEY_ID = None
+        self.AWS_SECRET_ACCESS_KEY = None
+        self.AWS_SESSION_TOKEN = None
 
     def __to_json(self, node: Any, **kwargs: Any) -> JsonElement:
         if node is None or isinstance(node, (str, int, float, bool)):
@@ -64,7 +67,13 @@ class AwsClient:
         log.info(f"[Aws] call service={service} action={action}{arg_info}")
         py_action = action.replace("-", "_")
         session = self.config.sessions().session(self.account_id, self.role, self.profile)
-        client = session.client(service, region_name=self.region)
+        client = session.client(
+            service,
+            region_name=self.region,
+            aws_access_key_id=(self.AWS_ACCESS_KEY_ID or None),
+            aws_secret_access_key=(self.AWS_SECRET_ACCESS_KEY or None),
+            aws_session_token=(self.AWS_SESSION_TOKEN or None),
+        )
         if client.can_paginate(py_action):
             paginator = client.get_paginator(py_action)
             result: List[Json] = []
