@@ -786,8 +786,11 @@ class GraphExportIterator:
             f" in {elapsed:.4f}s"
         )
 
-    def export_graph(self) -> None:
+    def export_graph(self, filename=None) -> None:
         with self.export_lock:
+            if filename:
+                old_tempfile = self.tempfile
+                self.tempfile = open(filename, "wb")
             start_time = time()
             for node in self.graph.nodes:
                 node_dict = node_to_dict(node)
@@ -835,5 +838,9 @@ class GraphExportIterator:
             elapsed = elapsed_nodes + elapsed_edges
             log.info(f"Exported {self.total_lines} nodes and edges in {elapsed:.4f}s")
             self.graph_exported = True
+            if filename:
+                self.tempfile.flush()
+                self.tempfile.close()
+                self.tempfile = old_tempfile
             del self.graph
             self.tempfile.seek(0)

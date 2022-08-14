@@ -35,13 +35,13 @@ class CoreEvents(threading.Thread):
     def run(self) -> None:
         self.name = "eventbus-listener"
         add_event_listener(EventType.SHUTDOWN, self.shutdown)
-        while not self.shutdown_event.is_set():
-            log.debug("Connecting to resotocore event bus")
-            try:
-                self.connect()
-            except Exception as e:
-                log.error(e)
-            time.sleep(1)
+        # while not self.shutdown_event.is_set():
+        #     log.debug("Connecting to resotocore event bus")
+        #     try:
+        #         self.connect()
+        #     except Exception as e:
+        #         log.error(e)
+        #     time.sleep(1)
 
     def connect(self) -> None:
         log.debug(f"Connecting to {self.ws_uri}")

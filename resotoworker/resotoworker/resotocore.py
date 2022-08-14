@@ -35,8 +35,8 @@ class Resotocore:
         tempdir = self._config.resotoworker.tempdir
         graph_merge_kind = self._config.resotoworker.graph_merge_kind
 
-        self.create_graph(base_uri, resotocore_graph)
-        self.update_model(graph, base_uri, dump_json=dump_json, tempdir=tempdir)
+        # self.create_graph(base_uri, resotocore_graph)
+        # self.update_model(graph, base_uri, dump_json=dump_json, tempdir=tempdir)
 
         graph_export_iterator = GraphExportIterator(
             graph,
@@ -46,8 +46,8 @@ class Resotocore:
         )
         #  The graph is not required any longer and can be released.
         del graph
-        graph_export_iterator.export_graph()
-        self.send_graph(graph_export_iterator, base_uri, resotocore_graph, task_id)
+        graph_export_iterator.export_graph("out_to_quine.json")
+        # self.send_graph(graph_export_iterator, base_uri, resotocore_graph, task_id)
 
     def create_graph(self, resotocore_base_uri: str, resotocore_graph: str) -> None:
         graph_uri = f"{resotocore_base_uri}/graph/{resotocore_graph}"

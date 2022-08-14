@@ -106,12 +106,16 @@ class Config(metaclass=MetaConfig):
         else:
             raise RuntimeError("Config must have a 'kind' attribute")
 
-    def load_config(self, reload: bool = False) -> None:
+    def load_config(self, reload: bool = False, provided=None) -> None:
         if len(Config.running_config.classes) == 0:
             raise RuntimeError("No config added")
         with self._config_lock:
             try:
-                config, new_config_revision = get_config(self.config_name, self.resotocore_uri, verify=self.verify)
+                if provided:
+                    config = provided
+                    new_config_revision = "__provided--"
+                else:
+                    config, new_config_revision = get_config(self.config_name, self.resotocore_uri, verify=self.verify)
                 if len(config) == 0:
                     if self._initial_load:
                         raise ConfigNotFoundError("Empty config returned - loading defaults")
@@ -138,12 +142,12 @@ class Config(metaclass=MetaConfig):
                 Config.running_config.data = new_config
                 Config.running_config.revision = new_config_revision
             self.init_default_config()
-            if self._initial_load:
-                # Try to store the generated config. Handle failure gracefully.
-                try:
-                    self.save_config()
-                except RuntimeError as e:
-                    log.error(f"Failed to save config: {e}")
+            # if self._initial_load:
+            #     # Try to store the generated config. Handle failure gracefully.
+            #     try:
+            #         self.save_config()
+            #     except RuntimeError as e:
+            #         log.error(f"Failed to save config: {e}")
             self.override_config(Config.running_config)
             self._initial_load = False
             if not self._ce.is_alive():

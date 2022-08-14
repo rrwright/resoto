@@ -38,6 +38,7 @@ collect_event = threading.Event()
 
 
 def main() -> None:
+    print("   THIS IS A CUSTOM BUILD   ")
     setup_logger("resotoworker")
     # Try to run in a new process group and
     # ignore if not possible for whatever reason
@@ -67,19 +68,19 @@ def main() -> None:
     # added their args to the arg parser
     arg_parser.parse_args()
 
-    try:
-        wait_for_resotocore(resotocore.http_uri)
-    except TimeoutError as e:
-        log.fatal(f"Failed to connect to resotocore: {e}")
-        sys.exit(1)
+    # try:
+    #     wait_for_resotocore(resotocore.http_uri)
+    # except TimeoutError as e:
+    #     log.fatal(f"Failed to connect to resotocore: {e}")
+    #     sys.exit(1)
 
     tls_data: Optional[TLSData] = None
-    if resotocore.is_secure:
-        tls_data = TLSData(
-            common_name=ArgumentParser.args.subscriber_id,
-            resotocore_uri=resotocore.http_uri,
-        )
-        tls_data.start()
+    # if resotocore.is_secure:
+    #     tls_data = TLSData(
+    #         common_name=ArgumentParser.args.subscriber_id,
+    #         resotocore_uri=resotocore.http_uri,
+    #     )
+    #     tls_data.start()
     config = Config(
         ArgumentParser.args.subscriber_id,
         resotocore_uri=resotocore.http_uri,
@@ -87,15 +88,22 @@ def main() -> None:
     )
     add_config(config)
     plugin_loader.add_plugin_config(config)
-    config.load_config()
+
+    import json
+    fd = open("config.json", "r")
+    custom_config = json.loads(fd.read())
+    fd.close()
+
+    config.load_config(provided=custom_config)
 
     def send_request(request: requests.Request) -> requests.Response:
-        prepared = request.prepare()
-        s = requests.Session()
-        verify = None
-        if tls_data:
-            verify = tls_data.verify
-        return s.send(request=prepared, verify=verify)
+        # prepared = request.prepare()
+        # s = requests.Session()
+        # verify = None
+        # if tls_data:
+        #     verify = tls_data.verify
+        # return s.send(request=prepared, verify=verify)
+        return requests.Response()
 
     core = Resotocore(send_request, config)
 
@@ -108,66 +116,72 @@ def main() -> None:
     # Try to increase nofile and nproc limits
     increase_limits()
 
-    web_server_args = {}
-    if tls_data:
-        web_server_args = {
-            "ssl_cert": tls_data.cert_path,
-            "ssl_key": tls_data.key_path,
-        }
-    web_server = WebServer(
-        WebApp(mountpoint=Config.resotoworker.web_path),
-        web_host=Config.resotoworker.web_host,
-        web_port=Config.resotoworker.web_port,
-        **web_server_args,
-    )
-    web_server.daemon = True
-    web_server.start()
+    # web_server_args = {}
+    # if tls_data:
+    #     web_server_args = {
+    #         "ssl_cert": tls_data.cert_path,
+    #         "ssl_key": tls_data.key_path,
+    #     }
+    # web_server = WebServer(
+    #     WebApp(mountpoint=Config.resotoworker.web_path),
+    #     web_host=Config.resotoworker.web_host,
+    #     web_port=Config.resotoworker.web_port,
+    #     **web_server_args,
+    # )
+    # web_server.daemon = True
+    # web_server.start()
 
-    core_actions = CoreActions(
-        identifier=f"{ArgumentParser.args.subscriber_id}-collector",
-        resotocore_uri=resotocore.http_uri,
-        resotocore_ws_uri=resotocore.ws_uri,
-        actions={
-            "collect": {
-                "timeout": Config.resotoworker.timeout,
-                "wait_for_completion": True,
-            },
-            "cleanup": {
-                "timeout": Config.resotoworker.timeout,
-                "wait_for_completion": True,
-            },
-        },
-        message_processor=partial(core_actions_processor, plugin_loader, tls_data, collector),
-        tls_data=tls_data,
-    )
+    message = {'kind': 'action', 'message_type': 'collect',
+               'data': {'task': '303a991a-1b50-11ed-9557-3285bd250d29', 'step': 'collect'}}
+    result = core_actions_processor(plugin_loader, tls_data, collector, message)
+    log.info(f"CoreActions Processor returned: {result}")
 
-    task_queue_filter = {}
-    if len(Config.resotoworker.collector) > 0:
-        task_queue_filter = {"cloud": list(Config.resotoworker.collector)}
-    core_tasks = CoreTasks(
-        identifier=f"{ArgumentParser.args.subscriber_id}-tagger",
-        resotocore_ws_uri=resotocore.ws_uri,
-        tasks=["tag"],
-        task_queue_filter=task_queue_filter,
-        message_processor=core_tag_tasks_processor,
-        tls_data=tls_data,
-    )
-    core_actions.start()
-    core_tasks.start()
+    # core_actions = CoreActions(
+    #     identifier=f"{ArgumentParser.args.subscriber_id}-collector",
+    #     resotocore_uri=resotocore.http_uri,
+    #     resotocore_ws_uri=resotocore.ws_uri,
+    #     actions={
+    #         "collect": {
+    #             "timeout": Config.resotoworker.timeout,
+    #             "wait_for_completion": True,
+    #         },
+    #         "cleanup": {
+    #             "timeout": Config.resotoworker.timeout,
+    #             "wait_for_completion": True,
+    #         },
+    #     },
+    #     message_processor=partial(core_actions_processor, plugin_loader, tls_data, collector),
+    #     tls_data=tls_data,
+    # )
 
-    for Plugin in plugin_loader.plugins(PluginType.ACTION):
-        assert issubclass(Plugin, BaseActionPlugin)
-        try:
-            log.debug(f"Starting action plugin {Plugin}")
-            plugin = Plugin(tls_data=tls_data)
-            plugin.start()
-        except Exception as e:
-            log.exception(f"Caught unhandled persistent Plugin exception {e}")
+    # task_queue_filter = {}
+    # if len(Config.resotoworker.collector) > 0:
+    #     task_queue_filter = {"cloud": list(Config.resotoworker.collector)}
+    # core_tasks = CoreTasks(
+    #     identifier=f"{ArgumentParser.args.subscriber_id}-tagger",
+    #     resotocore_ws_uri=resotocore.ws_uri,
+    #     tasks=["tag"],
+    #     task_queue_filter=task_queue_filter,
+    #     message_processor=core_tag_tasks_processor,
+    #     tls_data=tls_data,
+    # )
+    # core_actions.start()
+    # core_tasks.start()
+
+    # for Plugin in plugin_loader.plugins(PluginType.ACTION):
+    #     assert issubclass(Plugin, BaseActionPlugin)
+    #     try:
+    #         log.debug(f"Starting action plugin {Plugin}")
+    #         plugin = Plugin(tls_data=tls_data)
+    #         plugin.start()
+    #     except Exception as e:
+    #         log.exception(f"Caught unhandled persistent Plugin exception {e}")
 
     # We wait for the shutdown Event to be set() and then end the program
     # While doing so we print the list of active threads once per 15 minutes
+    shutdown(Event(EventType.SHUTDOWN, {"reason": "Complete"}))
     shutdown_event.wait()
-    web_server.shutdown()  # type: ignore
+    # web_server.shutdown()  # type: ignore
     time.sleep(1)  # everything gets 1000ms to shutdown gracefully before we force it
     resotolib.proc.kill_children(SIGTERM, ensure_death=True)
     log.info("Shutdown complete")
