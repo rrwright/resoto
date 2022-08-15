@@ -89,9 +89,9 @@ def main() -> None:
     add_config(config)
     plugin_loader.add_plugin_config(config)
 
-    import json
-    fd = open("config.json", "r")
-    custom_config = json.loads(fd.read())
+    import yaml
+    fd = open("config.yaml", "r")
+    custom_config = yaml.safe_load(fd.read())
     fd.close()
 
     config.load_config(provided=custom_config)
